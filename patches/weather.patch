@@ -1,14 +1,15 @@
 --- a/BarWidget.qml
 +++ b/BarWidget.qml
-@@ -1,5 +1,6 @@
+@@ -1,6 +1,7 @@
  import QtQuick
  import qs.Commons
-+import "Model.js" as Model
  import qs.Ui
++import "Model.js" as Model
  
  BarWidget {
-@@ -46,6 +47,18 @@
-     if (panelLoader.item) panelLoader.item.closeForPopoutSwitch()
+   id: root
+@@ -64,11 +65,24 @@
+     }
    }
  
 +  // Which drawn icon to show: match the widget's own weather glyph back to its weather code.
@@ -23,10 +24,7 @@
 +    return "cloud"
 +  }
 +
-   visible: panelLoader.item && panelLoader.item.label !== ""
-   implicitWidth: button.implicitWidth
-   implicitHeight: button.implicitHeight
-@@ -68,7 +81,8 @@
+   BarIconButton {
      id: button
      anchors.fill: parent
      bar: root.bar

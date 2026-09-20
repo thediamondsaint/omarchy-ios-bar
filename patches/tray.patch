@@ -6,7 +6,17 @@
            x: root.drawerExtent - root.revealExtent
 -          text: "\uf053"
 +          text: ""
-+          iconComponent: Component { IosIcon { kind: "chevronLeft"; color: expandIcon.foreground } }
++          iconComponent: Component { IosIcon { kind: "chevronLeft"; color: expandIcon.foreground; rotation: expandIcon.textRotation || 0 } }
            onPressed: function(button) {
              if (button === Qt.RightButton) root.managePopupOpen = !root.managePopupOpen
            }
+@@ -351,7 +352,8 @@
+           width: implicitWidth
+           height: implicitHeight
+           y: root.drawerExtent - root.revealExtent
+-          text: "\uf053"
++          text: ""
++          iconComponent: Component { IosIcon { kind: "chevronLeft"; color: expandIcon.foreground; rotation: expandIcon.textRotation || 0 } }
+           textRotation: 90
+           onPressed: function(button) {
+             if (button === Qt.RightButton) root.managePopupOpen = !root.managePopupOpen

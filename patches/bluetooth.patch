@@ -1,17 +1,18 @@
 --- a/Panel.qml
 +++ b/Panel.qml
-@@ -652,7 +652,15 @@
+@@ -652,7 +652,16 @@
      id: button
      anchors.fill: parent
      bar: root.bar
 -    text: root.icon
 +    text: ""
-+    // iOS-style bluetooth rune: slashed when the adapter is off, accent-coloured while a device is connected.
 +    iconComponent: Component {
++      // iOS-style bluetooth rune: slashed when the adapter is off, accent-coloured while a device is connected.
 +      IosIcon {
 +        kind: "bluetooth"
 +        slashed: !!root.adapter && !root.adapter.enabled
-+        color: root.connectedDevices.length > 0 ? Color.accent : (root.bar ? root.bar.foreground : Color.foreground)
++        color: (root.connectedDevices && root.connectedDevices.length > 0) ? Color.accent
++             : (root.bar ? root.bar.foreground : Color.foreground)
 +      }
 +    }
      onPressed: function(b) {

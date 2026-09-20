@@ -23,9 +23,14 @@ The left side (Omarchy logo, workspaces) and the clock are untouched.
 
 ## Requirements
 
-- Omarchy **4.0.4** (tested; `./install.sh --check` tells you if your Omarchy's stock widgets still match)
-- Qt 6.6+ (uses the curve renderer for smooth vector shapes; Omarchy 4 ships Qt 6.11), `patch`, `python3`
+- **Omarchy 4** (the Quickshell bar). Checked against every 4.0.x release — 4.0.0, 4.0.1, 4.0.2, 4.0.3, 4.0.4 —
+  and against the current development branch; `./install.sh --check` tells you where your own machine stands.
+  Omarchy 3 and older use Waybar and are not supported.
+- Qt 6.6+ (smooth vector shapes; Omarchy 4 ships Qt 6.11), `patch`, `jq`, `python3`
 - Optional, for the measuring tool: `grim`, ImageMagick
+
+Both bar orientations work: the tray chevron turns with a vertical bar, and the battery keeps Omarchy's
+own vertical glyph, which fits a side bar better than a lying-down battery would.
 
 ## Install
 
@@ -37,14 +42,20 @@ cd omarchy-ios-bar
 ```
 
 `--check` prints one line per widget, e.g. `ok  network  (exact)` or `ok  network  (adaptive)`. **Exact** means the
-patch in `patches/` (written against Omarchy 4.0.4) applies as is; **adaptive** means your Omarchy build differs slightly
+patch in `patches/` (generated against Omarchy 4.0.4) applies as is; **adaptive** means your Omarchy build differs
 and `tools/apply-widget.py` makes the same change structurally. Each widget is handled on its own: one that fits neither
-way is skipped and the rest are still installed.
+way is skipped and the rest are still installed. Where your Omarchy keeps each widget comes from `omarchy plugin catalog`,
+so a build that moved the files is fine too.
 
 The installer backs up `~/.config/omarchy/shell.json` first (cloning a widget rewrites its entry in the bar layout).
-`./install.sh --status` shows what is installed, and `./install.sh --diagnose` prints a report (versions, whether the
-patches fit, which files each widget has, and any shell errors) that you can paste into a bug report. **Undo:** `./uninstall.sh` (removes the clones, the bar goes back to
-the stock widgets).
+Afterwards:
+
+```bash
+./install.sh --verify     # is it actually live? files, enabled plugins, and QML errors from the shell's log
+./install.sh --status     # what is installed
+./install.sh --diagnose   # full report to paste into a bug report
+./uninstall.sh            # undo: removes the clones, the bar goes back to the stock widgets
+```
 
 Never edit files under `/usr/share/omarchy`: Omarchy overwrites them on update. The installer follows Omarchy's own
 rule and clones each built-in widget into `~/.config/omarchy/plugins/<username>.<widget>` with `omarchy plugin clone`,
@@ -53,12 +64,14 @@ then patches the clone. Your clones survive updates; upstream changes to those w
 ## How it works
 
 ```
-ioskit/IosIcon.qml     the icon kit: one component that draws every icon as vector paths. The installer copies it into
-                       each patched widget's own folder, so a widget never depends on a shared path
-patches/*.patch        one small patch per widget, against the stock file (verified byte-exact on 4.0.4)
-tools/apply-widget.py  adaptive installer: the same change, found by structure instead of exact context lines
-tools/measure-bar.py   measure icon sizes/alignment from a screenshot
-extras/icon-preview/   optional plugin: a window drawing every icon in every state
+ioskit/IosIcon.qml      the icon kit: one component that draws every icon as vector paths. The installer copies it into
+                        each patched widget's own folder, so a widget never depends on a shared path
+tools/apply-widget.py   the change itself: finds the widget's button by structure and gives it the icon
+patches/*.patch         the same change as a plain patch per widget, generated from apply-widget.py (fast path)
+tools/make-patches.sh   regenerates patches/ so the two can never drift apart
+tests/test-patcher.py   checks both against real Omarchy trees, including edited and broken ones
+tools/measure-bar.py    measure icon sizes/alignment from a screenshot
+extras/icon-preview/    optional plugin: a window drawing every icon in every state
 install.sh, uninstall.sh
 ```
 
@@ -77,14 +90,24 @@ install.sh, uninstall.sh
 
 ## Troubleshooting
 
-- **`CONFLICT <widget>` in `--check`.** Neither the exact patch nor the adaptive patcher fits that widget in your Omarchy
-  build; it is skipped and everything else still installs. Please open an issue with the output of `omarchy version` and
-  `grep -n "BarIconButton" -B2 -A10 /usr/share/omarchy/shell/plugins/panels/<widget>/Panel.qml`. To do it by hand, follow
-  step 3 of "Make your own" below.
+**Start here:** `./install.sh --verify`. It checks the three things that actually go wrong — the widget file is
+patched, `IosIcon.qml` is next to it, and the clone is the plugin the bar is using — and then prints any QML errors
+the shell logged. If you open an issue, paste `./install.sh --diagnose`.
+
+- **`NO FIT <widget>` in `--check`.** Neither the exact patch nor the adaptive patcher fits that widget in your Omarchy
+  build; it is skipped and everything else still installs. Please open an issue with the output of `./install.sh --diagnose`.
+  To do it by hand, follow step 3 of "Make your own" below.
 - **A widget (network, audio, ...) disappeared from the bar.** A widget that fails to load vanishes entirely. Run
   `./install.sh --diagnose`: the last section lists `Plugin widget <name> failed: <reason>`. The usual causes are a missing
   `IosIcon.qml` in that widget's folder (re-running `./install.sh` puts it back and also repairs installs from an older
   version of this repo that used a shared folder) or a partially applied hand-made patch (`*.rej`/`*.orig` files are listed).
+- **The bar still shows the stock icons although everything installed.** The clone has to be the enabled plugin.
+  `--verify` reports this as `INACTIVE <widget>`; fix it with `omarchy plugin enable <user>.<widget>`.
+- **`omarchy plugin clone` failed part-way through an install.** Each clone makes the shell reload, and while it is
+  restarting its IPC is unavailable, so an operation right after another can fail. Both scripts retry, but if something
+  is still missing just run `./install.sh` again — it is safe to re-run and only touches what is not done yet.
+- **An Omarchy update changed a widget.** Your clones keep working (they are copies), they just miss upstream's changes
+  to that widget. To take the new version: `omarchy plugin remove <user>.<widget>` and re-run `./install.sh`.
 - **Icons look garbled or jagged.** Some graphics drivers mis-draw Qt's curve renderer. In
   `~/.config/omarchy/plugins/<user>.<widget>/IosIcon.qml` set `property bool curveRenderer: false`, then
   `omarchy restart shell`.
@@ -97,6 +120,26 @@ install.sh, uninstall.sh
   `IosIcon.qml` (in each widget folder; edit the copy in `ioskit/` and re-run `./install.sh` to refresh them all). The nudge and sizes scale with the bar's `iconCanvas`, so a different
   bar font size or display scale usually works, but the calibration was done on a 2x display.
 - **Go back to stock.** `./uninstall.sh` (or `omarchy plugin remove <user>.<widget>` for a single widget).
+
+## Keeping it compatible
+
+`tools/apply-widget.py` is the single source of truth: `patches/*.patch` are generated from it
+(`tools/make-patches.sh`), so the fast path and the adaptive path always make the same change.
+
+```bash
+tests/test-patcher.py                 # against the Omarchy installed here
+tests/test-patcher.py ~/omarchy-4.0.0 ~/omarchy-main    # and against any other Omarchy trees
+```
+
+For each widget the tests check that the patch applies, that the patcher produces exactly the same file, that the
+result is valid QML (`qmlformat`), that every button the widget has is patched (a vertical bar uses its own), that
+patching twice is a no-op, that the change survives the kinds of edits an Omarchy update makes to the file
+(moved code, extra properties, a reformatted binding, another button above it), and that a widget the icon cannot
+honestly fit is refused instead of half-patched.
+
+The icons only read state the widget already has, and they read it defensively: if a future Omarchy renames
+`signalStrength` or drops `sink`, the icon falls back to a sensible visible state instead of leaving a blank slot
+in your bar.
 
 ## Make your own (the method)
 
@@ -117,8 +160,10 @@ This is how the set was built; the same approach works for any bar widget.
    `tools/measure-bar.py --region "X,Y WxH" --names a,b,c` prints each icon's height and vertical centre from a screenshot;
    adjust `inkH`/`inkCy` until they agree (this repo converged to 25 px tall, centred at 30.5 px, on a 2x display).
    An automated loop (measure -> adjust the tables -> `omarchy restart shell` -> repeat) converges in a few iterations.
-7. **Package as patches against the stock files** and verify each one:
-   `diff -u stock modified > x.patch`, then `patch stock_copy < x.patch && cmp stock_copy modified`.
+7. **Package the change as code, not as a diff.** A diff against one Omarchy version stops applying the moment a
+   nearby line changes upstream. Describe the edit structurally (`tools/apply-widget.py`: find the button by its
+   `id`, replace its `text:` binding) and generate the patches from it (`tools/make-patches.sh`) — then the fast
+   path and the fallback can never disagree, and `tests/test-patcher.py` can check both against other versions.
 
 ### Pitfalls worth knowing
 
@@ -127,7 +172,11 @@ This is how the set was built; the same approach works for any bar widget.
 - Only count pixels in the icon colour when measuring; stars in a wallpaper and dimmed bars will skew bounding boxes.
 - `grim -g` takes logical pixels and `WxH` with an `x`; on a 2x display the capture is twice as large.
 - When previewing, make the window opaque (`tag = "-default-opacity"`, `opacity = "1 1"`), or the desktop shows through.
-- If Omarchy updates a stock widget, `./install.sh --check` reports a conflict; the patches are small enough to apply by hand.
+- Test the real install path, not just `--check`: the first release of this repo passed `--check` everywhere and still
+  aborted on the first machine that was not mine.
+- Ask Omarchy where its widgets are (`omarchy plugin catalog` has `barWidgetPath`) instead of hard-coding
+  `/usr/share/omarchy/shell/plugins/...`; it also answers correctly on a git install.
+- A widget can have more than one button: the tray has one for a horizontal bar and one for a vertical bar.
 
 ## Tuning
 

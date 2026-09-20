@@ -6,11 +6,11 @@
      bar: root.bar
 -    text: root.icon
 +    text: ""
-+    // iOS-style Wi-Fi fan (bars follow signal strength), ethernet port, or a slashed fan when offline.
 +    iconComponent: Component {
++      // iOS-style Wi-Fi fan (bars follow signal strength), ethernet port, or a slashed fan when offline.
 +      IosIcon {
 +        kind: root.kind === "ethernet" ? "ethernet" : "wifi"
-+        level: root.signalStrength >= 0 ? root.signalStrength / 100 : 0
++        level: root.signalStrength === undefined ? 1 : (root.signalStrength >= 0 ? root.signalStrength / 100 : 0)
 +        slashed: root.kind === "disconnected"
 +        color: button.active && button.useActiveColor ? button.activeColor : button.foreground
 +      }

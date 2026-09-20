@@ -1,0 +1,45 @@
+name: compatibility
+
+# Checks the icons still fit Omarchy: every 4.0.x release plus the current development branch.
+# Runs on every push and once a week, so an upstream change to a bar widget shows up here
+# rather than on someone's bar.
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  patcher:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the Omarchy versions to test against
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/basecamp/omarchy.git upstream
+          for ref in v4.0.0 v4.0.1 v4.0.2 v4.0.3 v4.0.4 origin/HEAD; do
+            name=$(echo "$ref" | tr '/' '_')
+            mkdir -p "trees/$name"
+            git -C upstream archive "$ref" shell | tar -x -C "trees/$name" || echo "skipping $ref"
+          done
+          ls trees
+
+      - name: Qt tools for the QML syntax check
+        run: sudo apt-get update && sudo apt-get install -y qt6-declarative-dev-tools || true
+
+      - name: Run the tests
+        run: python3 tests/test-patcher.py trees/*
+
+      - name: patches/ are what apply-widget.py generates
+        run: |
+          # Regenerate against the 4.0.4 tree the patches are written for; nothing should change.
+          OMARCHY_PATH=trees/v4.0.4 tools/make-patches.sh trees/v4.0.4
+          git diff --exit-code patches/ || {
+            echo "patches/ are out of date: run tools/make-patches.sh and commit the result" >&2
+            exit 1
+          }
+
+      - name: Shell scripts parse
+        run: bash -n install.sh && bash -n uninstall.sh && bash -n tools/make-patches.sh

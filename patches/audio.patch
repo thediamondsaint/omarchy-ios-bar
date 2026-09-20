@@ -1,21 +1,28 @@
 --- a/Panel.qml
 +++ b/Panel.qml
-@@ -631,7 +631,17 @@
+@@ -627,11 +627,24 @@
+     onTriggered: root.refreshDisplayAudioModels()
+   }
+ 
++  // iOS-style speaker: waves follow the volume, an x when muted, headphones when the sink is a headset.
++  readonly property bool iosHasOutput: root.sink === undefined ? true : !!(root.sink && root.sink.audio)
++  Component {
++    id: iosAudioIcon
++    IosIcon {
++      kind: (root.isHeadphones && root.sink && root.isHeadphones(root.sink)) ? "headphones" : "volume"
++      level: root.outputVolume === undefined ? 1 : root.outputVolume
++      muted: !!root.outputMuted
++      color: button.foreground
++    }
++  }
++
+   BarIconButton {
      id: button
      anchors.fill: parent
      bar: root.bar
 -    text: root.outputIcon()
 +    text: ""
-+    // iOS-style speaker: waves follow the volume, an x when muted, headphones when the sink is a headset.
-+    iconComponent: Component {
-+      IosIcon {
-+        visible: !!(root.sink && root.sink.audio)
-+        kind: root.isHeadphones(root.sink) ? "headphones" : "volume"
-+        level: root.outputVolume
-+        muted: root.outputMuted
-+        color: button.foreground
-+      }
-+    }
++    iconComponent: root.iosHasOutput ? iosAudioIcon : null
      onPressed: function(b) {
        if (b === Qt.RightButton) root.toggleAllMuted()
        else root.toggle()
