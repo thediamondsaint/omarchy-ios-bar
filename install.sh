@@ -46,7 +46,8 @@ is_patched() { grep -q "$(patched_marker "$1")" "$2" 2>/dev/null; }
 apply_widget() {
   local w=$1 f=$2 dry=${3:-} mode=()
   [ "$dry" = "--dry-run" ] && mode=(--dry-run)
-  if [ -z "${IOS_BAR_ADAPTIVE_ONLY:-}" ] && patch -s "${mode[@]}" "$f" < "$here/patches/$w.patch" >/dev/null 2>&1; then
+  # IOS_BAR_ADAPTIVE_ONLY=1 forces the adaptive patcher (testing); the battery has no adaptive form and stays exact.
+  if { [ -z "${IOS_BAR_ADAPTIVE_ONLY:-}" ] || [ "$w" = power ]; } && patch -s "${mode[@]}" "$f" < "$here/patches/$w.patch" >/dev/null 2>&1; then
     echo exact; return 0
   fi
   if [ "$w" != power ] && command -v python3 >/dev/null 2>&1 \
