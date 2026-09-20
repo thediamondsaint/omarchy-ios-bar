@@ -1,5 +1,7 @@
 # iOS-style icons for the Omarchy top bar
 
+[![compatibility](https://github.com/thediamondsaint/omarchy-ios-bar/actions/workflows/compatibility.yml/badge.svg)](https://github.com/thediamondsaint/omarchy-ios-bar/actions/workflows/compatibility.yml)
+
 Turns the status icons in the [Omarchy](https://omarchy.org) top bar into one consistent, iPhone-status-bar-style
 set: the Wi-Fi fan, a battery with the number in it, a speaker with waves, the bluetooth rune, and matching
 weather icons. Everything follows your theme and reacts to real state (signal strength, volume, mute, charging...).

@@ -1,0 +1,37 @@
+name: Something is wrong with the icons
+description: An icon is missing, wrong, or the install did not take
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Two commands answer most of these, so please run them first:
+
+        ```bash
+        ./install.sh --verify     # is the install actually live?
+        ./install.sh --diagnose   # the full report (paths are shortened to ~)
+        ```
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What you see
+      description: Which icon, and what it does instead — missing, blank gap, wrong shape, wrong colour, not updating?
+      placeholder: The Wi-Fi icon is a blank gap; everything else is fine.
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnose
+    attributes:
+      label: Output of ./install.sh --diagnose
+      description: Please skim it before pasting. It shows versions, whether the icons fit your Omarchy, what is installed, your bar layout, and recent shell errors.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: bar
+    attributes:
+      label: Your bar
+      description: Position and anything unusual — vertical bar, more than one monitor, display scale, a custom theme.
+      placeholder: top bar, one 2x display, custom theme
