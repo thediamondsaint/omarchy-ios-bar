@@ -7,6 +7,9 @@
 #   ./install.sh --verify   check an install is actually live: files, plugins, and the shell's log
 #   ./install.sh --diagnose print an environment report to paste into a bug report
 #
+# Coming back after an earlier attempt: ./uninstall.sh --purge clears what it left behind (folders a
+# failed clone left, patch leftovers, the old shared ioskit folder) so this can start clean.
+#
 # Omarchy's rule: never edit /usr/share/omarchy. Built-in widgets are cloned into
 # ~/.config/omarchy/plugins/<username>.<widget> (`omarchy plugin clone`) and edited there.
 #
@@ -80,6 +83,16 @@ clone_file() {   # clone folder -> the widget file inside it (from its own manif
 }
 
 plugin_dirs() { find "$plugins" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort; }
+
+# A folder an earlier, half-finished attempt left behind. Omarchy refuses to clone onto an existing
+# folder, so this would block the install until it is gone.
+stale_dir() {   # widget -> the folder in the way, if there is one
+  local d
+  for d in "$plugins"/*."$1" "$plugins/${USER:-$(id -un)}.$1"; do
+    [ -d "$d" ] && [ ! -f "$d/manifest.json" ] && { echo "$d"; return 0; }
+  done
+  return 1
+}
 
 # Marker that a widget file already carries our change.
 patched_marker() { case " $1 " in *" power "*) echo iphoneFill ;; *) echo IosIcon ;; esac; }
@@ -228,7 +241,7 @@ verify() {
 }
 
 install() {
-  local w d f id out before after rc backup how src attempt
+  local w d f id out before after rc backup how src attempt stale
   local installed=() skipped=() failed=()
   local applicable=()
 
@@ -257,6 +270,9 @@ install() {
   for w in "${applicable[@]}"; do
     if d=$(find_clone "$w"); then
       echo "reusing your existing clone of $w: $d"
+    elif stale=$(stale_dir "$w"); then
+      warn "$w: $stale is left over from an earlier attempt and is in the way of a fresh clone. Clear it with ./uninstall.sh --purge, then run ./install.sh again."
+      failed+=("$w"); continue
     else
       before=$(plugin_dirs)
       # Each clone makes the shell reload; while it is coming back, the next clone's IPC call can fail
@@ -312,7 +328,10 @@ install() {
   echo
   echo "installed: ${installed[*]:-none}"
   [ "${#skipped[@]}" -gt 0 ] && echo "skipped (does not fit / customised): ${skipped[*]}"
-  [ "${#failed[@]}"  -gt 0 ] && echo "failed: ${failed[*]}"
+  if [ "${#failed[@]}" -gt 0 ]; then
+    echo "failed: ${failed[*]}"
+    echo "If an earlier attempt left something in the way: ./uninstall.sh --purge, then ./install.sh again."
+  fi
   echo "Check it with ./install.sh --verify, undo it with ./uninstall.sh"
   [ "${#installed[@]}" -gt 0 ]
 }

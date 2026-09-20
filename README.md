@@ -59,6 +59,44 @@ Afterwards:
 ./uninstall.sh            # undo: removes the clones, the bar goes back to the stock widgets
 ```
 
+### Tried this before? Start from a clean slate
+
+If an earlier version of this repo, or an install that stopped half-way, left something behind, clear it out
+first — a folder a failed `omarchy plugin clone` left is enough to block a fresh clone of that widget
+(Omarchy will not clone onto an existing folder, and the installer will tell you which one is in the way).
+
+```bash
+cd omarchy-ios-bar          # this repo, freshly pulled: git pull
+./uninstall.sh --purge      # removes the icons, then lists every leftover and asks before deleting
+./install.sh                # clean install
+./install.sh --verify
+```
+
+`--purge` clears the clones that carry these icons, folders left by a failed clone, patch leftovers
+(`*.rej`, `*.orig`), the shared `ioskit` folder older versions used, and the plugin backups Omarchy keeps
+in `~/.config/omarchy/plugins/.<id>.bak.*`. It lists everything before deleting it, leaves plugins that are
+not ours alone, and keeps your `shell.json` backups (printing the command to restore one). Add `--yes` to
+skip the question.
+
+**Doing it by hand**, if you no longer have the copy of the repo you installed with:
+
+```bash
+omarchy plugin list                       # your clones are <username>.<widget>
+omarchy plugin remove <username>.network  # repeat for power, bluetooth, audio, monitor, agents, tray, weather
+rm -rf ~/.config/omarchy/plugins/ioskit   # only older versions of this repo made this
+omarchy restart shell
+```
+
+If the bar layout itself looks wrong afterwards, put back a backup the installer made — `ls
+~/.config/omarchy/shell.json.bak.ios-bar.*` lists them, and the oldest one is your bar before any of this:
+
+```bash
+cp ~/.config/omarchy/shell.json.bak.ios-bar.<oldest> ~/.config/omarchy/shell.json && omarchy restart shell
+```
+
+And if you ever edited the stock widgets under `/usr/share/omarchy` directly,
+reinstall them with `sudo pacman -S omarchy` — those files are meant to stay untouched.
+
 Never edit files under `/usr/share/omarchy`: Omarchy overwrites them on update. The installer follows Omarchy's own
 rule and clones each built-in widget into `~/.config/omarchy/plugins/<username>.<widget>` with `omarchy plugin clone`,
 then patches the clone. Your clones survive updates; upstream changes to those widgets just won't reach them.
@@ -108,6 +146,9 @@ the shell logged. If you open an issue, paste `./install.sh --diagnose`.
 - **`omarchy plugin clone` failed part-way through an install.** Each clone makes the shell reload, and while it is
   restarting its IPC is unavailable, so an operation right after another can fail. Both scripts retry, but if something
   is still missing just run `./install.sh` again — it is safe to re-run and only touches what is not done yet.
+- **`... is left over from an earlier attempt and is in the way of a fresh clone`.** A previous attempt left a folder
+  where the clone needs to go, and Omarchy will not clone onto an existing folder. `./uninstall.sh --purge` clears it
+  (see [Tried this before?](#tried-this-before-start-from-a-clean-slate)), then run `./install.sh` again.
 - **An Omarchy update changed a widget.** Your clones keep working (they are copies), they just miss upstream's changes
   to that widget. To take the new version: `omarchy plugin remove <user>.<widget>` and re-run `./install.sh`.
 - **Icons look garbled or jagged.** Some graphics drivers mis-draw Qt's curve renderer. In
