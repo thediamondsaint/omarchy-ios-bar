@@ -1,0 +1,39 @@
+--- a/BarWidget.qml
++++ b/BarWidget.qml
+@@ -1,5 +1,7 @@
+ import QtQuick
+ import qs.Commons
++import "../ioskit"
++import "Model.js" as Model
+ import qs.Ui
+ 
+ BarWidget {
+@@ -46,6 +48,18 @@
+     if (panelLoader.item) panelLoader.item.closeForPopoutSwitch()
+   }
+ 
++  // Which drawn icon to show: match the widget's own weather glyph back to its weather code.
++  readonly property string weatherKind: {
++    var label = panelLoader.item ? panelLoader.item.label : ""
++    var table = [[113, false, "sun"], [113, true, "moon"], [116, false, "partlySun"], [116, true, "partlyMoon"],
++                 [119, false, "cloud"], [143, false, "fog"], [143, true, "fog"], [200, false, "storm"],
++                 [176, false, "rain"], [176, true, "rain"], [266, false, "rain"], [182, false, "sleet"],
++                 [179, false, "snow"], [179, true, "snow"], [329, false, "snow"]]
++    for (var i = 0; i < table.length; i++)
++      if (Model.iconForCode(table[i][0], table[i][1]) === label) return table[i][2]
++    return "cloud"
++  }
++
+   visible: panelLoader.item && panelLoader.item.label !== ""
+   implicitWidth: button.implicitWidth
+   implicitHeight: button.implicitHeight
+@@ -68,7 +82,8 @@
+     id: button
+     anchors.fill: parent
+     bar: root.bar
+-    text: panelLoader.item ? panelLoader.item.label : ""
++    text: ""
++    iconComponent: Component { IosIcon { kind: root.weatherKind; color: button.foreground } }
+     slotSize: Style.bar.statusSlot
+     // Tooltip suppressed because the panel is the detail view.
+     tooltipText: ""

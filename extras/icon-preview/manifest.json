@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "ios-bar.icon-preview",
+  "name": "iOS bar icon preview",
+  "version": "1.0.0",
+  "author": "thediamondsaint",
+  "description": "A floating window that draws every kit icon in every state, enlarged and at true size",
+  "kinds": ["overlay"],
+  "entryPoints": { "overlay": "Preview.qml" }
+}

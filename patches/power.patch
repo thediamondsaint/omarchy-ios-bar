@@ -1,0 +1,163 @@
+--- a/Panel.qml
++++ b/Panel.qml
+@@ -19,11 +19,11 @@
+   property string activeProfile: ""
+   property int profileIndex: 0
+   property bool cursorActive: false
+-  readonly property bool showPercentage: setting("showPercentage", false) === true
++  readonly property bool showPercentage: setting("showPercentage", true) === true
+   // With the percentage shown the button paints a text block wider than an
+   // icon, so the open-panel mark takes the painted width instead of the
+   // icon-sized fraction of the slot the fallback assumes.
+-  readonly property real openPanelIndicatorWidth: showPercentage && !button.vertical ? button.glyphPaintedWidth : 0
++  readonly property real openPanelIndicatorWidth: !button.vertical ? root.iphoneW : 0
+   readonly property bool batteryPresent: {
+     var device = UPower.displayDevice
+     return !!(device && device.isPresent)
+@@ -273,14 +273,142 @@
+     }
+   }
+ 
++  // ---- iPhone-style battery -------------------------------------------------
++  // Same visual height as the other bar icons; ~2:1 like a phone battery.
++  readonly property real bodyH: Style.bar.iconCanvas * 0.70
++  readonly property real bodyW: bodyH * 1.9
++  readonly property real nubW: Math.max(1.5, bodyH * 0.11)
++  readonly property real iphoneW: bodyW + nubW + Style.space(1)
++  readonly property bool pluggedIn: batteryPresent && !discharging
++  // Charging colour comes from the theme's `green` (colors.toml); falls back to the accent colour.
++  property string themeGreen: ""
++  readonly property color chargeColor: themeGreen !== "" ? themeGreen : Color.accent
++  FileView {
++    id: themeColorsFile
++    path: Color.currentThemePath + "/colors.toml"
++    watchChanges: false
++    printErrors: false
++    onLoaded: {
++      var m = text().match(/^\s*green\s*=\s*["']?(#[0-9A-Fa-f]{6})/m)
++      root.themeGreen = m ? m[1] : ""
++    }
++  }
++  // Re-read after a theme switch (the shell updates these when the palette changes).
++  Connections {
++    target: Color
++    function onAccentChanged() { themeColorsFile.reload() }
++    function onBackgroundChanged() { themeColorsFile.reload() }
++    function onForegroundChanged() { themeColorsFile.reload() }
++  }
++  // Green while plugged in, red at 20% or less on battery, otherwise the bar's foreground colour.
++  readonly property color iphoneFill: (charging || (batteryFull && pluggedIn)) ? chargeColor
++                                    : (discharging && batteryFraction <= 0.2) ? Color.urgent
++                                    : batteryFillColor
++  function contrastOn(c) {
++    return (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) > 0.6 ? "#101012" : "#ffffff"
++  }
++
++  // The neighbouring icons are text glyphs, whose ink sits a bit below the geometric centre of their
++  // canvas. Measured on the bar: ~0.19 x the icon canvas. Nudge the drawn battery down to line up.
++  readonly property real glyphInkDrop: Style.bar.iconCanvas * 0.19
++
++  // Charge bolt (while charging) + percentage number.
++  component BatteryLabel: Row {
++    property color tint: "white"
++    spacing: Style.space(1)
++    Text {
++      visible: root.charging
++      anchors.verticalCenter: parent.verticalCenter
++      text: String.fromCodePoint(0xF0E7)
++      color: parent.tint
++      font.family: Style.font.family
++      font.pixelSize: root.bodyH * 0.55
++    }
++    Text {
++      visible: root.showPercentage
++      anchors.verticalCenter: parent.verticalCenter
++      text: Math.round(root.batteryFraction * 100)
++      color: parent.tint
++      font.family: Style.font.family
++      font.pixelSize: root.bodyH * 0.68
++      font.bold: true
++    }
++  }
++
++  component IphoneBattery: Item {
++    id: ib
++    width: root.iphoneW
++    height: root.bodyH
++    anchors.centerIn: parent
++    anchors.verticalCenterOffset: root.glyphInkDrop
++    readonly property real inset: Math.max(1, root.bodyH * 0.10)
++    readonly property real innerW: root.bodyW - 2 * inset
++    readonly property real innerH: root.bodyH - 2 * inset
++    readonly property real fillW: root.batteryFraction <= 0 ? 0 : Math.max(innerH, innerW * root.batteryFraction)
++
++    Rectangle {  // body outline
++      width: root.bodyW
++      height: root.bodyH
++      radius: root.bodyH * 0.30
++      color: "transparent"
++      border.width: Math.max(1, root.bodyH * 0.09)
++      border.color: Util.alpha(root.batteryFillColor, 0.42)
++    }
++    Rectangle {  // terminal nub
++      x: root.bodyW + 0.5
++      y: (root.bodyH - height) / 2
++      width: root.nubW
++      height: root.bodyH * 0.38
++      radius: width
++      color: Util.alpha(root.batteryFillColor, 0.42)
++    }
++    Item {
++      id: inner
++      x: ib.inset
++      y: ib.inset
++      width: ib.innerW
++      height: ib.innerH
++
++      Rectangle {  // charge level
++        width: ib.fillW
++        height: parent.height
++        radius: root.bodyH * 0.22
++        color: root.iphoneFill
++        Behavior on width { NumberAnimation { duration: 200 } }
++      }
++      Item {  // label over the empty part
++        x: ib.fillW
++        width: inner.width - ib.fillW
++        height: inner.height
++        clip: true
++        Item {
++          x: -ib.fillW
++          width: inner.width
++          height: inner.height
++          BatteryLabel { anchors.centerIn: parent; tint: root.batteryFillColor }
++        }
++      }
++      Item {  // label over the filled part (contrasting colour)
++        width: ib.fillW
++        height: inner.height
++        clip: true
++        Item {
++          width: inner.width
++          height: inner.height
++          BatteryLabel { anchors.centerIn: parent; tint: root.contrastOn(root.iphoneFill) }
++        }
++      }
++    }
++  }
++  Component { id: iphoneBattery; IphoneBattery {} }
++
+   BarIconButton {
+     id: button
+     anchors.fill: parent
+     bar: root.bar
+-    text: root.showPercentage && !vertical
+-      ? Math.round(root.batteryFraction * 100) + "% " + root.batteryIcon()
+-      : root.batteryIcon()
+-    slotSize: Style.bar.iconSlot * (root.showPercentage && !vertical ? 2 : 1)
++    text: vertical ? root.batteryIcon() : ""
++    iconComponent: vertical ? null : iphoneBattery
++    slotSize: vertical ? Style.bar.iconSlot : Math.max(Style.bar.iconSlot, root.iphoneW + (Style.bar.iconSlot - Style.bar.iconCanvas))
+     tooltipText: ""
+     onPressed: function(b) {
+       if (!root.batteryPresent) return

@@ -1,0 +1,20 @@
+--- a/Tray.qml
++++ b/Tray.qml
+@@ -4,6 +4,7 @@
+ import QtQuick.Effects
+ import Quickshell.Services.SystemTray
+ import qs.Commons
++import "../ioskit"
+ import qs.Ui
+ import "TrayModel.js" as TrayModel
+ 
+@@ -269,7 +270,8 @@
+           width: implicitWidth
+           height: implicitHeight
+           x: root.drawerExtent - root.revealExtent
+-          text: "\uf053"
++          text: ""
++          iconComponent: Component { IosIcon { kind: "chevronLeft"; color: expandIcon.foreground } }
+           onPressed: function(button) {
+             if (button === Qt.RightButton) root.managePopupOpen = !root.managePopupOpen
+           }

@@ -1,0 +1,22 @@
+--- a/Panel.qml
++++ b/Panel.qml
+@@ -3,6 +3,7 @@
+ import Quickshell
+ import Quickshell.Io
+ import qs.Commons
++import "../ioskit"
+ import qs.Ui
+ 
+ Panel {
+@@ -339,7 +340,10 @@
+     id: button
+     anchors.fill: parent
+     bar: root.bar
+-    text: "󱚣"
++    text: ""
++    iconComponent: Component {
++      IosIcon { kind: "robot"; color: button.active && button.useActiveColor ? button.activeColor : button.foreground }
++    }
+     active: root.alarming
+     onPressed: function(buttonCode) {
+       if (buttonCode === Qt.RightButton) root.launchAgent()

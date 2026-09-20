@@ -1,0 +1,29 @@
+--- a/Panel.qml
++++ b/Panel.qml
+@@ -6,6 +6,7 @@
+ import Quickshell.Services.Pipewire
+ import qs.Ui
+ import qs.Commons
++import "../ioskit"
+ import "Model.js" as Model
+ 
+ Panel {
+@@ -631,7 +632,17 @@
+     id: button
+     anchors.fill: parent
+     bar: root.bar
+-    text: root.outputIcon()
++    text: ""
++    // iOS-style speaker: waves follow the volume, an x when muted, headphones when the sink is a headset.
++    iconComponent: Component {
++      IosIcon {
++        visible: !!(root.sink && root.sink.audio)
++        kind: root.isHeadphones(root.sink) ? "headphones" : "volume"
++        level: root.outputVolume
++        muted: root.outputMuted
++        color: button.foreground
++      }
++    }
+     onPressed: function(b) {
+       if (b === Qt.RightButton) root.toggleAllMuted()
+       else root.toggle()
