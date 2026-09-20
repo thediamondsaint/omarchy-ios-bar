@@ -24,7 +24,7 @@ The left side (Omarchy logo, workspaces) and the clock are untouched.
 ## Requirements
 
 - Omarchy **4.0.4** (tested; `./install.sh --check` tells you if your Omarchy's stock widgets still match)
-- Qt 6.6+ (uses the curve renderer for smooth vector shapes; Omarchy 4 ships Qt 6.11), `patch`
+- Qt 6.6+ (uses the curve renderer for smooth vector shapes; Omarchy 4 ships Qt 6.11), `patch`, `python3`
 - Optional, for the measuring tool: `grim`, ImageMagick
 
 ## Install
@@ -35,6 +35,11 @@ cd omarchy-ios-bar
 ./install.sh --check      # read-only: do the patches apply to your Omarchy's stock widgets?
 ./install.sh              # clone + patch the widgets, install the icon kit, reload the shell
 ```
+
+`--check` prints one line per widget, e.g. `ok  network  (exact)` or `ok  network  (adaptive)`. **Exact** means the
+patch in `patches/` (written against Omarchy 4.0.4) applies as is; **adaptive** means your Omarchy build differs slightly
+and `tools/apply-widget.py` makes the same change structurally. Each widget is handled on its own: one that fits neither
+way is skipped and the rest are still installed.
 
 The installer backs up `~/.config/omarchy/shell.json` first (cloning a widget rewrites its entry in the bar layout).
 `./install.sh --status` shows what is installed. **Undo:** `./uninstall.sh` (removes the clones, the bar goes back to
@@ -48,7 +53,8 @@ then patches the clone. Your clones survive updates; upstream changes to those w
 
 ```
 ioskit/IosIcon.qml     the icon kit: one component that draws every icon as vector paths
-patches/*.patch        one small patch per widget, against the stock file (verified byte-exact)
+patches/*.patch        one small patch per widget, against the stock file (verified byte-exact on 4.0.4)
+tools/apply-widget.py  adaptive installer: the same change, found by structure instead of exact context lines
 tools/measure-bar.py   measure icon sizes/alignment from a screenshot
 extras/icon-preview/   optional plugin: a window drawing every icon in every state
 install.sh, uninstall.sh
@@ -66,6 +72,22 @@ install.sh, uninstall.sh
    everywhere. The tables `inkH / inkCx / inkCy` at the top of `IosIcon.qml` hold the calibration.
 4. **The battery** is drawn inline in the power widget (it needs the number knocked out of the fill), and its charging
    colour is the theme's own `green`, read from the theme's `colors.toml` and reloaded on theme change.
+
+## Troubleshooting
+
+- **`CONFLICT <widget>` in `--check`.** Neither the exact patch nor the adaptive patcher fits that widget in your Omarchy
+  build; it is skipped and everything else still installs. Please open an issue with the output of `omarchy version` and
+  `grep -n "BarIconButton" -B2 -A10 /usr/share/omarchy/shell/plugins/panels/<widget>/Panel.qml`. To do it by hand, follow
+  step 3 of "Make your own" below.
+- **Nothing changed on the bar.** Plugin QML is cached: `omarchy restart shell`. Then look for QML errors:
+  `journalctl --user --since "-2min" --no-pager | grep -iE "typeerror|referenceerror|cannot load|is not a type"`.
+- **An icon is missing or looks like an empty gap.** Your Omarchy build probably names a property the widget uses
+  differently (for example `signalStrength` in the network widget). It degrades to a dimmed icon rather than crashing;
+  edit the `iconComponent` block in your clone (`~/.config/omarchy/plugins/<user>.<widget>/`) to use the right property.
+- **Icons are the wrong size or sit too high/low.** Run `tools/measure-bar.py` (see below) and adjust `inkH`/`inkCy` in
+  `~/.config/omarchy/plugins/ioskit/IosIcon.qml`. The nudge and sizes scale with the bar's `iconCanvas`, so a different
+  bar font size or display scale usually works, but the calibration was done on a 2x display.
+- **Go back to stock.** `./uninstall.sh` (or `omarchy plugin remove <user>.<widget>` for a single widget).
 
 ## Make your own (the method)
 

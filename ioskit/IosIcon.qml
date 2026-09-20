@@ -26,15 +26,17 @@ Item {
   property real dimOpacity: 0.32     // opacity of inactive bars / waves
   // Every icon is scaled so its *ink* is the same height (a wifi fan fills less of the grid than a
   // bluetooth rune), and strokes have the same pixel weight across all icons.
-  property real inkTarget: Style.bar.iconCanvas * 0.66            // visual height of every icon, px
-  property real strokePx: Style.bar.iconCanvas * 0.072            // stroke width, px
+  // The bar's icon canvas size; falls back to Omarchy 4.0.4's value if a newer Omarchy renames it.
+  readonly property real canvas: (Style.bar && Style.bar.iconCanvas) ? Style.bar.iconCanvas : 19
+  property real inkTarget: canvas * 0.66            // visual height of every icon, px
+  property real strokePx: canvas * 0.072            // stroke width, px
   readonly property var inkH:  ({ wifi: 18.738, ethernet: 15.0, bluetooth: 20.0, volume: 17.2, headphones: 18.0, display: 17.971, robot: 18.893, chevronLeft: 16.174, sun: 20, moon: 20, cloud: 20, partlySun: 20, partlyMoon: 20, rain: 20, sleet: 20, storm: 20, snow: 20, fog: 20 })
   readonly property var inkCx: ({ wifi: 12.0, ethernet: 12.0, bluetooth: 11.75, volume: 12.6, headphones: 12.0, display: 12.0, robot: 12.0, chevronLeft: 11.4, sun: 12, moon: 12, cloud: 12, partlySun: 12, partlyMoon: 12, rain: 12, sleet: 12, storm: 12, snow: 12, fog: 12 })
   readonly property var inkCy: ({ wifi: 12.673, ethernet: 12.0, bluetooth: 13.595, volume: 15.086, headphones: 12.1, display: 15.011, robot: 12.68, chevronLeft: 15.411, sun: 12, moon: 12, cloud: 12, partlySun: 12, partlyMoon: 12, rain: 12, sleet: 12, storm: 12, snow: 12, fog: 12 })
   property bool centered: true
   // Drawn icons are centred geometrically; the bar's text glyphs sit lower in their canvas.
   // Same calibrated nudge as the battery so everything shares one centre line.
-  property real nudge: Style.bar.iconCanvas * 0.19
+  property real nudge: canvas * 0.19
 
   readonly property real unit: inkTarget / (inkH[kind] || 24)
   readonly property real weight: strokePx / unit                   // stroke width in grid units

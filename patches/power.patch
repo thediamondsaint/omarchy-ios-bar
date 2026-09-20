@@ -14,13 +14,16 @@
    readonly property bool batteryPresent: {
      var device = UPower.displayDevice
      return !!(device && device.isPresent)
-@@ -273,14 +273,142 @@
+@@ -273,14 +273,145 @@
      }
    }
  
 +  // ---- iPhone-style battery -------------------------------------------------
 +  // Same visual height as the other bar icons; ~2:1 like a phone battery.
-+  readonly property real bodyH: Style.bar.iconCanvas * 0.70
++  // Bar icon sizes; fall back to Omarchy 4.0.4's values if a newer Omarchy renames them.
++  readonly property real barCanvas: (Style.bar && Style.bar.iconCanvas) ? Style.bar.iconCanvas : 19
++  readonly property real barSlot: (Style.bar && Style.bar.iconSlot) ? Style.bar.iconSlot : 27
++  readonly property real bodyH: barCanvas * 0.70
 +  readonly property real bodyW: bodyH * 1.9
 +  readonly property real nubW: Math.max(1.5, bodyH * 0.11)
 +  readonly property real iphoneW: bodyW + nubW + Style.space(1)
@@ -55,7 +58,7 @@
 +
 +  // The neighbouring icons are text glyphs, whose ink sits a bit below the geometric centre of their
 +  // canvas. Measured on the bar: ~0.19 x the icon canvas. Nudge the drawn battery down to line up.
-+  readonly property real glyphInkDrop: Style.bar.iconCanvas * 0.19
++  readonly property real glyphInkDrop: barCanvas * 0.19
 +
 +  // Charge bolt (while charging) + percentage number.
 +  component BatteryLabel: Row {
@@ -157,7 +160,7 @@
 -    slotSize: Style.bar.iconSlot * (root.showPercentage && !vertical ? 2 : 1)
 +    text: vertical ? root.batteryIcon() : ""
 +    iconComponent: vertical ? null : iphoneBattery
-+    slotSize: vertical ? Style.bar.iconSlot : Math.max(Style.bar.iconSlot, root.iphoneW + (Style.bar.iconSlot - Style.bar.iconCanvas))
++    slotSize: vertical ? barSlot : Math.max(barSlot, root.iphoneW + (barSlot - barCanvas))
      tooltipText: ""
      onPressed: function(b) {
        if (!root.batteryPresent) return
