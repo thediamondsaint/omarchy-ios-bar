@@ -1,14 +1,6 @@
 --- a/Panel.qml
 +++ b/Panel.qml
-@@ -4,6 +4,7 @@
- import Quickshell.Io
- import qs.Ui
- import qs.Commons
-+import "../ioskit"
- import "Model.js" as Model
- 
- Panel {
-@@ -469,7 +470,8 @@
+@@ -469,7 +469,8 @@
      id: button
      anchors.fill: parent
      bar: root.bar

@@ -1,14 +1,6 @@
 --- a/Tray.qml
 +++ b/Tray.qml
-@@ -4,6 +4,7 @@
- import QtQuick.Effects
- import Quickshell.Services.SystemTray
- import qs.Commons
-+import "../ioskit"
- import qs.Ui
- import "TrayModel.js" as TrayModel
- 
-@@ -269,7 +270,8 @@
+@@ -269,7 +269,8 @@
            width: implicitWidth
            height: implicitHeight
            x: root.drawerExtent - root.revealExtent

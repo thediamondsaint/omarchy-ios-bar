@@ -23,7 +23,7 @@ for w in "${widgets[@]}"; do
     fi
   done
 done
-rm -rf "$plugins/ioskit" && echo "removed icon kit"
+[ -d "$plugins/ioskit" ] && rm -rf "$plugins/ioskit" && echo "removed old shared icon folder"
 omarchy restart shell >/dev/null 2>&1 || echo "run: omarchy restart shell" >&2
 echo "removed: ${removed[*]:-none}"
 [ "${#kept[@]}" -eq 0 ] || echo "kept: ${kept[*]}"

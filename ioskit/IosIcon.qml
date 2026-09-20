@@ -10,6 +10,7 @@ import qs.Commons
 //
 //   iconComponent: Component { IosIcon { kind: "wifi"; level: 0.6; color: root.bar.foreground } }
 //
+// Set `curveRenderer: false` on an IosIcon if your graphics driver renders the smooth vector paths incorrectly.
 // kind: wifi | ethernet | bluetooth | volume | headphones | display | robot | chevronLeft
 //       weather: sun | moon | cloud | partlySun | partlyMoon | rain | sleet | storm | snow | fog
 // level:   0..1  (wifi bars, volume waves)
@@ -33,6 +34,8 @@ Item {
   readonly property var inkH:  ({ wifi: 18.738, ethernet: 15.0, bluetooth: 20.0, volume: 17.2, headphones: 18.0, display: 17.971, robot: 18.893, chevronLeft: 16.174, sun: 20, moon: 20, cloud: 20, partlySun: 20, partlyMoon: 20, rain: 20, sleet: 20, storm: 20, snow: 20, fog: 20 })
   readonly property var inkCx: ({ wifi: 12.0, ethernet: 12.0, bluetooth: 11.75, volume: 12.6, headphones: 12.0, display: 12.0, robot: 12.0, chevronLeft: 11.4, sun: 12, moon: 12, cloud: 12, partlySun: 12, partlyMoon: 12, rain: 12, sleet: 12, storm: 12, snow: 12, fog: 12 })
   readonly property var inkCy: ({ wifi: 12.673, ethernet: 12.0, bluetooth: 13.595, volume: 15.086, headphones: 12.1, display: 15.011, robot: 12.68, chevronLeft: 15.411, sun: 12, moon: 12, cloud: 12, partlySun: 12, partlyMoon: 12, rain: 12, sleet: 12, storm: 12, snow: 12, fog: 12 })
+  // If a graphics driver draws the curve renderer wrongly, set this to false to use the classic (multisampled) renderer.
+  property bool curveRenderer: true
   property bool centered: true
   // Drawn icons are centred geometrically; the bar's text glyphs sit lower in their canvas.
   // Same calibrated nudge as the battery so everything shares one centre line.
@@ -200,7 +203,9 @@ Item {
         y: layer.modelData.ty !== undefined ? layer.modelData.ty : 0
         scale: layer.modelData.sc !== undefined ? layer.modelData.sc : 1
         transformOrigin: Item.TopLeft
-        preferredRendererType: Shape.CurveRenderer
+        preferredRendererType: root.curveRenderer ? Shape.CurveRenderer : Shape.GeometryRenderer
+        layer.enabled: !root.curveRenderer
+        layer.samples: 4
         ShapePath {
           strokeColor: layer.modelData.stroke ? root.tint(layer.modelData.o) : "transparent"
           strokeWidth: layer.modelData.w !== undefined ? layer.modelData.w * root.weight / 2 : root.weight

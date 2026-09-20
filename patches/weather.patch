@@ -1,14 +1,13 @@
 --- a/BarWidget.qml
 +++ b/BarWidget.qml
-@@ -1,5 +1,7 @@
+@@ -1,5 +1,6 @@
  import QtQuick
  import qs.Commons
-+import "../ioskit"
 +import "Model.js" as Model
  import qs.Ui
  
  BarWidget {
-@@ -46,6 +48,18 @@
+@@ -46,6 +47,18 @@
      if (panelLoader.item) panelLoader.item.closeForPopoutSwitch()
    }
  
@@ -27,7 +26,7 @@
    visible: panelLoader.item && panelLoader.item.label !== ""
    implicitWidth: button.implicitWidth
    implicitHeight: button.implicitHeight
-@@ -68,7 +82,8 @@
+@@ -68,7 +81,8 @@
      id: button
      anchors.fill: parent
      bar: root.bar

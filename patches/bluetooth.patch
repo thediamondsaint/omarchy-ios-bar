@@ -1,14 +1,6 @@
 --- a/Panel.qml
 +++ b/Panel.qml
-@@ -6,6 +6,7 @@
- import Quickshell.Services.Pipewire
- import qs.Ui
- import qs.Commons
-+import "../ioskit"
- import "Model.js" as Model
- 
- Panel {
-@@ -652,7 +653,15 @@
+@@ -652,7 +652,15 @@
      id: button
      anchors.fill: parent
      bar: root.bar

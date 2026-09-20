@@ -1,14 +1,6 @@
 --- a/Panel.qml
 +++ b/Panel.qml
-@@ -6,6 +6,7 @@
- import Quickshell.Networking
- import qs.Ui
- import qs.Commons
-+import "../ioskit"
- import "Model.js" as Model
- 
- Panel {
-@@ -957,7 +958,16 @@
+@@ -957,7 +957,16 @@
      id: button
      anchors.fill: parent
      bar: root.bar
@@ -20,7 +12,7 @@
 +        kind: root.kind === "ethernet" ? "ethernet" : "wifi"
 +        level: root.signalStrength >= 0 ? root.signalStrength / 100 : 0
 +        slashed: root.kind === "disconnected"
-+        color: button.foreground
++        color: button.active && button.useActiveColor ? button.activeColor : button.foreground
 +      }
 +    }
  

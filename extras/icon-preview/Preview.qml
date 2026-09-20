@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import qs.Commons
-import "../ioskit"
 
 // Preview sheet for the icon kit. Toggle: omarchy-shell shell toggle ios-bar.icon-preview '{}'
 // (see extras/hyprland-preview-rule.lua to make it a floating window).

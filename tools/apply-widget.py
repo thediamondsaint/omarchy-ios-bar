@@ -21,7 +21,7 @@ iconComponent: Component {
     kind: root.kind === "ethernet" ? "ethernet" : "wifi"
     level: root.signalStrength >= 0 ? root.signalStrength / 100 : 0
     slashed: root.kind === "disconnected"
-    color: button.foreground
+    color: button.active && button.useActiveColor ? button.activeColor : button.foreground
   }
 }'''),
     "bluetooth": dict(block_id="button", component='''\
@@ -68,7 +68,7 @@ readonly property string weatherKind: {
 iconComponent: Component { IosIcon { kind: root.weatherKind; color: button.foreground } }'''),
 }
 
-IMPORT_KIT = 'import "../ioskit"'
+# The icon type (IosIcon.qml) lives in the widget's own folder, so no import is needed for it.
 
 
 def block_span(src, block_id):
@@ -145,7 +145,7 @@ def patch(src, spec):
         block_ind = indent_of(out[line_start:b_start])
         pre = "\n".join((block_ind + ln) if ln else ln for ln in spec["prelude"].split("\n"))
         out = out[:line_start] + pre + "\n" + out[line_start:]
-    imports = [IMPORT_KIT] + spec.get("extra_imports", [])
+    imports = list(spec.get("extra_imports", []))
     have = set(re.findall(r"^import .*$", out, re.M))
     add = [i for i in imports if i not in have]
     if add:

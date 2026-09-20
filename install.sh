@@ -3,6 +3,7 @@
 #
 #   ./install.sh --check    verify the patches apply to THIS Omarchy's stock widgets (changes nothing)
 #   ./install.sh --status   show what is already installed
+#   ./install.sh --diagnose print an environment + error report to paste into a bug report
 #   ./install.sh            clone the widgets into your own plugin folder, patch them, reload the shell
 #
 # Omarchy's rule: never edit /usr/share/omarchy. Built-in widgets are cloned into
@@ -10,7 +11,8 @@
 # Each widget is handled independently: one that does not apply to your Omarchy version is skipped,
 # the others are still installed. Every icon is first applied as an exact patch (written against Omarchy
 # 4.0.4); if the widget differs in your Omarchy build, tools/apply-widget.py applies the same change
-# structurally instead (the battery/power widget is exact-patch only).
+# structurally instead (the battery/power widget is exact-patch only). The icon file (IosIcon.qml) is
+# copied into every patched widget's own folder, so widgets never depend on a shared path.
 set -uo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -69,6 +71,12 @@ applies_to_stock() {
   return $rc
 }
 
+# Put IosIcon.qml next to the widget and remove the legacy shared-folder import if an older install left one.
+install_kit() {   # $1 = clone dir, $2 = widget file
+  cp "$here/ioskit/IosIcon.qml" "$1/IosIcon.qml" || return 1
+  sed -i '\|^import "../ioskit"$|d' "$2"
+}
+
 find_clone() {   # an existing user clone of a widget: ~/.config/omarchy/plugins/<user>.<widget>
   local d
   for d in "$plugins"/*."$1"; do
@@ -98,7 +106,17 @@ status() {
     if d=$(find_clone "$w"); then
       f="$d/$(clone_file "$w")"
       if is_patched "$w" "$f"; then
-        echo "  installed       $w  ($d)"
+        if grep -q 'import "../ioskit"' "$f" 2>/dev/null; then
+          if [ -f "$plugins/ioskit/IosIcon.qml" ]; then
+            echo "  installed (old layout with a shared folder; re-run ./install.sh to migrate)  $w  ($d)"
+          else
+            echo "  BROKEN          $w  ($d): imports ../ioskit but $plugins/ioskit is missing -> the widget does not load; re-run ./install.sh"
+          fi
+        elif [ "$w" != power ] && [ ! -f "$d/IosIcon.qml" ]; then
+          echo "  BROKEN          $w  ($d): patched but IosIcon.qml is missing here -> the widget does not load; re-run ./install.sh"
+        else
+          echo "  installed       $w  ($d)"
+        fi
       else
         echo "  cloned, but not patched (or edited since)  $w  ($d)"
       fi
@@ -106,7 +124,6 @@ status() {
       echo "  not installed   $w"
     fi
   done
-  if [ -f "$plugins/ioskit/IosIcon.qml" ]; then echo "  icon kit:       $plugins/ioskit"; else echo "  icon kit:       not installed"; fi
 }
 
 install() {
@@ -136,9 +153,6 @@ install() {
     echo "backed up shell.json -> $backup"
   fi
 
-  mkdir -p "$plugins/ioskit" && cp "$here/ioskit/IosIcon.qml" "$plugins/ioskit/IosIcon.qml" || { echo "could not install the icon kit" >&2; exit 1; }
-  echo "installed icon kit -> $plugins/ioskit"
-
   for w in "${applicable[@]}"; do
     if d=$(find_clone "$w"); then
       echo "reusing your existing clone of $w: $d"
@@ -163,6 +177,10 @@ install() {
       warn "your clone of $w ($d) differs too much for the patch or the adaptive patcher; leaving it alone"
       skipped+=("$w"); continue
     fi
+    if [ "$w" != power ]; then
+      if install_kit "$d" "$f"; then echo "  icon file -> $d/IosIcon.qml"
+      else warn "could not copy IosIcon.qml into $d"; failed+=("$w"); continue; fi
+    fi
     omarchy plugin validate "$d" >/dev/null 2>&1 || warn "omarchy plugin validate reports a problem in $d"
   done
 
@@ -172,10 +190,14 @@ install() {
     sleep 5
     if command -v journalctl >/dev/null 2>&1; then
       out=$(journalctl --user --since "-20s" --no-pager 2>/dev/null \
-            | grep -E "IosIcon|ioskit|TypeError|ReferenceError|Cannot load|is not a type|Unable to assign" | grep -v "plugin changed" | head -5)
-      [ -n "$out" ] && warn "the shell logged QML errors after the restart:"$'\n'"$out"
+            | grep -E "Plugin widget .* failed|IosIcon|ioskit|TypeError|ReferenceError|Cannot load|is not a type|Unable to assign" \
+            | grep -v "plugin changed" | sed -E 's/^.*omarchy-shell\[[0-9]+\]: *//' | head -8)
+      [ -n "$out" ] && warn "the shell logged errors after the restart (a widget listed here did not load):"$'\n'"$out"
     fi
   fi
+
+  # an older layout kept one shared folder; remove it once nothing imports it any more
+  if [ -d "$plugins/ioskit" ] && ! grep -rqs 'import "../ioskit"' "$plugins"/*/ 2>/dev/null; then rm -rf "$plugins/ioskit"; fi
 
   echo
   echo "installed: ${installed[*]:-none}"
@@ -185,9 +207,54 @@ install() {
   [ "${#installed[@]}" -gt 0 ]
 }
 
+diagnose() {
+  local w d f id
+  tilde() { sed "s#$HOME#~#g"; }
+  echo "== environment"
+  echo "omarchy:     $(omarchy_version)"
+  echo "quickshell:  $(quickshell --version 2>/dev/null | head -1)"
+  echo "qt6-declarative: $(pacman -Q qt6-declarative 2>/dev/null || echo unknown)"
+  shapes="NOT FOUND (the icons need QtQuick.Shapes; on Arch it is part of qt6-declarative)"
+  for q in /usr/lib/qt6/qml /usr/lib/qt/qml /usr/lib64/qt6/qml /usr/lib/x86_64-linux-gnu/qt6/qml; do
+    [ -d "$q/QtQuick/Shapes" ] && { shapes="present ($q/QtQuick/Shapes)"; break; }
+  done
+  echo "QtQuick.Shapes:  $shapes"
+  echo "session:     ${XDG_SESSION_TYPE:-?}   repo: $(git -C "$here" log --format=%h -1 2>/dev/null || echo unknown)"
+  echo
+  echo "== do the patches fit this Omarchy?"; check
+  echo
+  echo "== installed"; status | tilde
+  echo
+  echo "== files"
+  for w in "${widgets[@]}"; do
+    d=$(find_clone "$w") || continue
+    printf '%-10s %s\n' "$w" "$(ls "$d" | tr '\n' ' ')" | tilde
+  done
+  rej=$(find "$plugins" \( -name '*.rej' -o -name '*.orig' \) 2>/dev/null | tilde | tr '\n' ' ')
+  echo "leftover patch rejects: ${rej:-none}"
+  echo
+  echo "== bar layout (right + center)"
+  if command -v python3 >/dev/null 2>&1 && [ -f "$HOME/.config/omarchy/shell.json" ]; then
+    python3 - <<'PY'
+import json, os
+d = json.load(open(os.path.expanduser("~/.config/omarchy/shell.json")))
+lay = d.get("bar", {}).get("layout", {})
+for sec in ("right", "center"):
+    print(sec + ":", [e.get("id") for e in lay.get(sec, [])])
+PY
+  else echo "(no shell.json or python3)"; fi
+  echo
+  echo "== shell errors in the last 10 minutes (a widget named here did not load)"
+  journalctl --user --since "-10min" --no-pager 2>/dev/null \
+    | grep -E "Plugin widget .* failed|IosIcon|ioskit|TypeError|ReferenceError|Cannot load|is not a type|Unable to assign|is not a function" \
+    | grep -v "plugin changed" | sed -E 's/^.*omarchy-shell\[[0-9]+\]: *//' | tilde | sort -u | head -20
+  echo "(end of report; paths are shortened to ~, please skim it before sharing)"
+}
+
 case "${1:-}" in
+  --diagnose) diagnose ;;
   --check)  check ;;
   --status) status ;;
   ""|--install) install ;;
-  *) echo "usage: $0 [--check|--status]"; exit 2 ;;
+  *) echo "usage: $0 [--check|--status|--diagnose]"; exit 2 ;;
 esac
